@@ -1,5 +1,5 @@
 # Create3SimulationToolbox
-Create3 Simulation Toolbox for MATLAB
+Create3 Simulation Toolbox for MATLAB enables simulation and visualization of the iRobot Create3. 
 
 ## First Time Installation Instructions
 1. Download "Create3SimulationToolbox.zip" (or alternate version)
