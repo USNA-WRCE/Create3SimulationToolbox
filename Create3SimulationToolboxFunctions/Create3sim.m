@@ -15,6 +15,7 @@ classdef Create3sim < matlab.mixin.SetGet
     properties(GetAccess='public', SetAccess='private')
         fig; %simulation figure handle
         axs; %simulation axes handle
+        occupancyMap; %MATLAB occupancy map object (see obj.updateRoom)
     end
     % -> Read & Write
     properties(GetAccess='public', SetAccess='public')
@@ -68,6 +69,11 @@ classdef Create3sim < matlab.mixin.SetGet
         psCreate0; %simplified polyshape representation of Create3 for collision detection defined at initial position and orientation
         H_b2g_i; %current pose of robot body frame relative to global frame
         H_b2g_0; %initial pose of robot body frame relative to global frame (reference for odometry)
+
+        % occupancy map properties
+        R_o2g; %3x3 array defining the 3D rotation matrix defining the occupancy grid frame orientation relative to the world frame
+        h_o2g %hgtransform handle defining the occupancy map frame relative to the global frame
+        hOccupancyMap %image object showing binary occupancy map
     end
 
     % --------------------------------------------------------------------
@@ -178,36 +184,55 @@ classdef Create3sim < matlab.mixin.SetGet
             obj.hCreate3D = findobj(figTMP,'Type','Patch');
 
             % Create simulation transformation handles
-            H_p2b = Rx(pi);
+            % -> Global frame relative to Axes frame
             obj.h_g2a = triad('Parent',obj.axs,'Scale',0.5,'LineWidth',1.5);%,...
             %'AxisLabels',{'g_1','g_2','g_3'});
+            % -> Body frame relative to Global frame
             obj.h_b2g = triad('Parent',obj.h_g2a,'Scale',0.5,'LineWidth',1.5);%,...
             %'AxisLabels',{'b_1','b_2','b_3'});
-            obj.h_p2b = triad('Parent',obj.h_b2g,'Scale',0.5,'LineWidth',1.5,...
-                'Matrix',H_p2b);%,'AxisLabels',{'c_1','c_2','c_3'});
-            
+            % DELETE
+            % -> Patch object frame relative to Body frame
+            %H_p2b = Rx(pi);
+            %obj.h_p2b = triad('Parent',obj.h_b2g,'Scale',0.5,'LineWidth',1.5,...
+            %    'Matrix',H_p2b);%,'AxisLabels',{'c_1','c_2','c_3'});
+            % DELETE
+            % -> Occupancy map frame relative to Global frame
+            obj.R_o2g = eye(3);
+            H_o2g = eye(4);
+            H_o2g(1:3,1:3) = obj.R_o2g;
+            obj.h_o2g = triad('Parent',obj.h_g2a,'Scale',1.0,'LineWidth',1.0,...
+                'Matrix',H_o2g);%,'AxisLabels',{'o_1','o_2','o_3'});
+
             % Label transform objects
             set(obj.h_g2a,'Tag','Create3sim: World Frame (NED)');
             set(obj.h_b2g,'Tag','Create3sim: Body Frame (NED)');
+            set(obj.h_o2g,'Tag','Create3sim: Occupancy Map Frame');
+            
+            % Hide frame(s)
+            %hideTriad(obj.h_p2b);
+            hideTriad(obj.h_o2g);
 
             % Move Create3 visualization into simulation
-            set(obj.hCreate3D,'Parent',obj.h_p2b);
+            %set(obj.hCreate3D,'Parent',obj.h_p2b);
+            set(obj.hCreate3D,'Parent',obj.h_b2g);
+
             % Delete temporary Create3 figure
             delete(figTMP);
-
-            % Hide unnecessary frame(s)
-            hideTriad(obj.h_p2b);
 
             % Label axes
             xlabel(obj.axs,'x (m)');
             ylabel(obj.axs,'y (m)');
 
-            % Define Create3 collision polyshape
+            % Update Create3 vertices and define collision polyshape
+            % -> Define patch object frame relative to Body frame
+            H_p2b = Rx(pi);
             % -> Get patch-referenced vertices
             X_p = obj.hCreate3D.Vertices.';
             X_p(4,:) = 1;
             % -> Reference vertices to body frame
             X_b = H_p2b*X_p;
+            % -> Update Create3 visualization vertices
+            obj.hCreate3D.Vertices = X_b(1:3,:).';
             % -> Isolate x/y vertices
             X_b = X_b(1:2,:);
             % -> Calculate convex hull
@@ -215,7 +240,7 @@ classdef Create3sim < matlab.mixin.SetGet
             k(end) = [];
             % -> Keep convex hull of vertices
             X_b = X_b(:,k);
-            % -> Create polyshape
+            % -> Create collision polyshape
             obj.psCreate = polyshape(X_b(1,:),X_b(2,:));
             obj.psCreate0 = obj.psCreate;
 
@@ -255,8 +280,8 @@ classdef Create3sim < matlab.mixin.SetGet
 
         % --- Destructor
         function delete(obj)
-            % desctructor to properly stop and delete timers, and eliminate
-            % objects
+            % Destructor to properly stop and delete timers, and eliminate
+            % objects.
             
             fprintf('Destructor Called.\n')
             fprintf('\tStopping simulation...');
@@ -620,7 +645,7 @@ classdef Create3sim < matlab.mixin.SetGet
         function updateRoom(obj,varargin)
             % UPDATEROOM updates the hRoom collision space
             %   updateRoom(obj,str)
-            %   updateRoom(obj,bin,pix2m,H_c2o)
+            %   updateRoom(obj,bin,pix2m,H_c2g)
             %
             %   Input(s)
             %       str - character array specifying pre-defined spaces.
@@ -629,9 +654,9 @@ classdef Create3sim < matlab.mixin.SetGet
             %             obstacles)
             %     pix2m - scalar value defining the ratio of linear units
             %             per pixel.
-            %     H_c2o - 4x4 transformation defining the "upper left
+            %     H_c2g - 4x4 transformation defining the "upper left
             %             corner" frame of free-space relative to the
-            %             desired world/global frame for the returned
+            %             desired global frame for the returned
             %             polyshape.
             %
             %   L. DeVries & M. Kutzer, 16Oct2024, USNA
@@ -649,32 +674,119 @@ classdef Create3sim < matlab.mixin.SetGet
                             bin = imbinarize( rgb2gray(im) );
                             %pix2m = 1/100;
                             pix2m = 1/75;
-                            H_c2o = Tx(3098.8/1000)*Ty(-5384.8/1000)*Rz(pi/2);
+                            H_c2g = Tx(3098.8/1000)*Ty(-5384.8/1000)*Rz(pi/2);
                         case 'none'
                             bin = true;
                             pix2m = 1;
-                            H_c2o = eye(4);
+                            H_c2g = eye(4);
                         otherwise
                             warning('"%s" is not a recognized hRoom.',str);
                             return
                     end
                 case 3
-                    warning('You must specify the hRoom or necessary parameters to define the hRoom.');
+                    warning('You must specify the psRoom or necessary parameters to define psRoom.');
                     return
                 case 4
-                    % Check inputs using try/catch below
+                    % Parse input(s)
+                    bin = varargin{1};
+                    pix2m = varargin{2};
+                    H_c2g = varargin{3};
+                    % TODO - check inputs using try/catch below
             end
 
-            try
-                obj.psRoom = bw2polyshape(bin,pix2m,H_c2o);
+           try
+                % Define "room" as polyshape
+                obj.psRoom = bw2polyshape(bin,pix2m,H_c2g);
+                X_g = obj.psRoom.Vertices.';
+
+                % Define "room" as occupancy map
+                if ~isempty(X_g)
+                    % Define rotation relating occupancy map to global frame
+                    H_o2c = Rx(pi);
+                    H_o2g = H_c2g*H_o2c;
+                    obj.R_o2g = H_o2g(1:3,1:3);
+                    
+                    % Define occupancy-referenced points
+                    X_g(3,:) = 0;
+                    R_g2o = obj.R_o2g.';
+                    X_o = R_g2o*X_g;
+
+                    % Define occupancy grid
+                    obj.occupancyMap = binaryOccupancyMap(~bin,1/pix2m);
+                    obj.occupancyMap.GridLocationInWorld = [min(X_o(1,:)),min(X_o(2,:))];
+                    obj.occupancyMap.GridOriginInLocal = [0,0];
+                    
+                    
+                else
+                    % Set default "room" as occupancy grid
+                    obj.occupancyMap = [];
+
+                    % Define default rotation (occupancy grid to global frame)
+                    obj.R_o2g = eye(3);
+                end
             catch
-                warning('Unable to update hRoom.');
-                obj.psRoom = polyshape;
-            end
+                warning('Unable to update psRoom.');
 
+                % Set default "room" as polyshape
+                obj.psRoom = polyshape;
+                obj.occupancyMap = [];
+
+                % Set default "room" as occupancy grid
+                obj.occupancyMap = [];
+
+                % Define default rotation (occupancy grid to global frame)
+                obj.R_o2g = eye(3);
+            end
+            
+            % Update room polyshape
             delete(obj.hRoom);
             obj.hRoom = plot(obj.psRoom,'FaceColor','k','EdgeColor','none',...
-                'Parent',obj.axs);
+                'Parent',obj.axs,'FaceAlpha',0.5);
+
+            % Update occupancy map transformation
+            H_o2g = eye(4);
+            H_o2g(1:3,1:3) = obj.R_o2g;
+            H_o2g(3,4) = 0.001; % add z-offset to show both patch and occupancy map
+            set(obj.h_o2g,'Matrix',H_o2g,'Visible','off');
+
+            % Update occupancy map visualization
+            delete(obj.hOccupancyMap);
+            if ~isempty(obj.occupancyMap)
+                figTMP = figure('Name','TEMPORARY','Visible','off');
+                obj.hOccupancyMap = show(obj.occupancyMap);
+                set(obj.hOccupancyMap,'Parent',obj.h_o2g,'Visible','off');
+                delete(figTMP);
+            end
+            drawnow
+        end
+
+        function showOccupancyMap(obj)
+            % SHOWOCCUPANCYMAP shows the binary image occupancy map in the
+            % simulation.
+            
+            if isempty(obj.occupancyMap)
+                fprintf('No occupancy map defined.\n');
+                return
+            end
+
+            set(obj.hOccupancyMap,'Visible','on');
+            set(obj.hRoom,'FaceColor','m');
+            showTriad(obj.h_o2g);
+        end
+
+        function hideOccupancyMap(obj)
+            % HIDEOCCUPANCYMAP hides the binary image occupancy map in the
+            % simulation.
+
+            hideTriad(obj.h_o2g);
+            set(obj.hRoom,'FaceColor','k');
+
+            if isempty(obj.occupancyMap)
+                fprintf('No occupancy map defined.\n');
+                return
+            end
+
+            set(obj.hOccupancyMap,'Visible','off');
         end
 
         function resetPosition(obj,varargin)
