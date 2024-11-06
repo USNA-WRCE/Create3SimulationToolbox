@@ -10,7 +10,7 @@ classdef Create3sim < matlab.mixin.SetGet
     % Updates:
     %   06Nov2024 - Labeled transform objects for world and body frame
     %   06Nov2024 - Include occupancy map support
-    
+
     % Controlled visible properties
     % -> Read only
     properties(GetAccess='public', SetAccess='private')
@@ -771,7 +771,7 @@ classdef Create3sim < matlab.mixin.SetGet
             end
 
             set(obj.hOccupancyMap,'Visible','on');
-            set(obj.hRoom,'FaceColor','m');
+            set(obj.hRoom,'FaceColor','m','FaceAlpha',0.2);
             showTriad(obj.h_o2g);
         end
 
@@ -780,7 +780,7 @@ classdef Create3sim < matlab.mixin.SetGet
             % simulation.
 
             hideTriad(obj.h_o2g);
-            set(obj.hRoom,'FaceColor','k');
+            set(obj.hRoom,'FaceColor','k','FaceAlpha',0.5);
 
             if isempty(obj.occupancyMap)
                 fprintf('No occupancy map defined.\n');
