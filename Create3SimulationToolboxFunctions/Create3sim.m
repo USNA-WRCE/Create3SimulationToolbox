@@ -7,7 +7,7 @@ classdef Create3sim < matlab.mixin.SetGet
     %
     %   L. DeVries & M. Kutzer, 06Oct2024, USNA
     
-    % Updates
+    % Updates:
     %   06Nov2024 - Labeled transform objects for world and body frame
 
     % Controlled visible properties
