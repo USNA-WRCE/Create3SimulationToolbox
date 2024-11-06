@@ -15,7 +15,7 @@ function varargout = Create3SimulationToolboxVer
 %   L. DeVries & M. Kutzer, 31Oct2024, USNA
 
 % Updates:
-
+%   06Nov2024 - Labeled transform objects for world and body frame
 
 A.Name = 'Create3 Simulation Toolbox';
 A.Version = '1.0.0';
