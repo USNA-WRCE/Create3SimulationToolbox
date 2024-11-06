@@ -46,15 +46,11 @@ classdef Create3sim < matlab.mixin.SetGet
         odom_quat; %1x4 array describing the current odometry estimate of the Create3 orientation described as a quaternion (wxyz) referenced to the initial pose of the Create3
         odom_omega; %1x3 array describing current odometry estimate of Create3 angular velocty (rad/s) described as a roll/pitch/yaw rate referenced to the body-fixed frame
         odom_eul; %1x3 array describing the current odometry estimate of the Create3 orientation described in Euler angles (roll/pitch/yaw) referenced to the initial pose of the Create3
-        accel; %TODO document me
-        gyro; %TODO document me
-        imu_quat; %TODO document me
-        imu_eul; %TODO document me
-        pose_sub; %TODO document me
-        imu_sub; %TODO document me
-        odom_sub; %TODO document me
-        cmd_pub; %TODO document me
-
+        accel; % 1x3 array describing the current accelertaion of the Create3
+        gyro; % 1x3 array describing the angular velocity gyro measurement
+        imu_quat; % 1x4 quaternion describing the orientation
+        imu_eul; % 1x3 array of euler angles describing the orientation of the body relative to the world frame
+        
         % visualization objects
         hCreate3D; %patch handle for Create3 3D visualization
         hCreate2D; %polygon handle for Create3 2D visualization
@@ -146,12 +142,7 @@ classdef Create3sim < matlab.mixin.SetGet
             obj.tmr_updateVis.Name = 'Create3sim: Visualization Timer';
             obj.tmr_updateVis.Tag  = 'Create3sim: Visualization Timer';
 
-            % Initialize ROS 2 subscribe/publish connections
-            obj.pose_sub = 'Simulation mode: no connection to ROS 2 network';
-            obj.imu_sub  = 'Simulation mode: no connection to ROS 2 network';
-            obj.odom_sub = 'Simulation mode: no connection to ROS 2 network';
-            obj.cmd_pub  = 'Simulation mode: no connection to ROS 2 network';
-
+            
             % Initialize simulation parameters
             obj.sim_pos(:,1) = initial_position;
             obj.sim_vel = [0; 0];
@@ -257,6 +248,9 @@ classdef Create3sim < matlab.mixin.SetGet
 
         % --- Destructor
         function delete(obj)
+            % desctructor to properly stop and delete timers, and eliminate
+            % objects
+            
             fprintf('Destructor Called.\n')
             fprintf('\tStopping simulation...');
             obj.tmr_updateSim.stop;
