@@ -16,11 +16,12 @@ function varargout = Create3SimulationToolboxVer
 
 % Updates:
 %   06Nov2024 - Labeled transform objects for world and body frame
+%   06Nov2024 - Include occupancy map support
 
 A.Name = 'Create3 Simulation Toolbox';
-A.Version = '1.0.0';
+A.Version = '1.0.2';
 A.Release = '(R2023a)';
-A.Date = '31-OCT-2024';
+A.Date = '06-NOV-2024';
 A.URLVer = 1;
 
 msg{1} = sprintf('MATLAB %s Version: %s %s',A.Name, A.Version, A.Release);
