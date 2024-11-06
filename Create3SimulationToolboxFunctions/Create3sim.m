@@ -6,6 +6,9 @@ classdef Create3sim < matlab.mixin.SetGet
     %       sim = Create3sim;
     %
     %   L. DeVries & M. Kutzer, 06Oct2024, USNA
+    
+    % Updates
+    %   06Nov2024 - Labeled transform objects for world and body frame
 
     % Controlled visible properties
     % -> Read only
@@ -182,6 +185,10 @@ classdef Create3sim < matlab.mixin.SetGet
             %'AxisLabels',{'b_1','b_2','b_3'});
             obj.h_p2b = triad('Parent',obj.h_b2g,'Scale',0.5,'LineWidth',1.5,...
                 'Matrix',H_p2b);%,'AxisLabels',{'c_1','c_2','c_3'});
+            
+            % Label transform objects
+            set(obj.h_g2a,'Tag','Create3sim: World Frame (NED)');
+            set(obj.h_b2g,'Tag','Create3sim: Body Frame (NED)');
 
             % Move Create3 visualization into simulation
             set(obj.hCreate3D,'Parent',obj.h_p2b);
