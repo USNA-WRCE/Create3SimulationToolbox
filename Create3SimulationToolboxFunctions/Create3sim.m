@@ -9,7 +9,8 @@ classdef Create3sim < matlab.mixin.SetGet
     
     % Updates:
     %   06Nov2024 - Labeled transform objects for world and body frame
-
+    %   06Nov2024 - Include occupancy map support
+    
     % Controlled visible properties
     % -> Read only
     properties(GetAccess='public', SetAccess='private')
