@@ -706,7 +706,7 @@ classdef Create3sim < matlab.mixin.SetGet
                     obj.R_o2g = eye(3);
                 end
             catch
-                warning('Unable to update psRoom.');
+                warning('Unable to update polyshape Room.');
 
                 % Set default "room" as polyshape
                 obj.psRoom = polyshape;
