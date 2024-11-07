@@ -20,7 +20,7 @@ classdef Create3sim < matlab.mixin.SetGet
     end
     % -> Read & Write
     properties(GetAccess='public', SetAccess='public')
-        checkCollosions (1,1) logical = false; %check collisions between robot and environment
+        checkCollosions (1,1) logical = false; % Set to true to enable check for collisions between robot and environment
     end
 
     % Controlled hidden properties
@@ -387,26 +387,6 @@ classdef Create3sim < matlab.mixin.SetGet
             obj.imu_eul = obj.sim_eul;
         end
 
-        function odomRosCallback(obj,msg)
-            % emulates form of ROS 2 hardware implementation
-            obj.odom_pos(1) = msg.pose.pose.position.x;
-            obj.odom_pos(2) = msg.pose.pose.position.y;
-            obj.odom_pos(3) = msg.pose.pose.position.z;
-
-            obj.odom_quat(1) = msg.pose.pose.orientation.w;
-            obj.odom_quat(2) = msg.pose.pose.orientation.x;
-            obj.odom_quat(3) = msg.pose.pose.orientation.y;
-            obj.odom_quat(4) = msg.pose.pose.orientation.z;
-            obj.odom_eul = quat2eul(obj.odom_quat,'XYZ');
-
-            obj.odom_vel(1) = msg.twist.twist.linear.x;
-            obj.odom_vel(2) = msg.twist.twist.linear.y;
-            obj.odom_vel(3) = msg.twist.twist.linear.z;
-
-            obj.odom_omega(1) = msg.twist.twist.angular.x;
-            obj.odom_omega(2) = msg.twist.twist.angular.y;
-            obj.odom_omega(3) = msg.twist.twist.angular.z;
-        end
 
         function odomCallback(obj)
             % ODOMCALLBACK simulates Create3 odometry information and
