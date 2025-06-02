@@ -5,6 +5,7 @@ function Create3SimulationToolboxUpdate
 %   M. Kutzer, 31Oct2024, USNA
 
 % Updates:
+%   22May2025 - Updated to enable local install
 
 % TODO - update function for general operation
 
@@ -12,13 +13,15 @@ ToolboxUpdate('Create3Simulation');
 
 end
 
+%% Internal functions (unique workspace)
+% ------------------------------------------------------------------------
 function ToolboxUpdate(toolboxName)
 
-%% Setup functions
+% Setup functions
 ToolboxVer = str2func( sprintf('%sToolboxVer',toolboxName) );
 installToolbox = str2func( sprintf('install%sToolbox',toolboxName) );
 
-%% Check current version
+% Check current version
 try
     A = ToolboxVer;
 catch ME
@@ -26,7 +29,7 @@ catch ME
     fprintf('No previous version of %s detected.\n',toolboxName);
 end
 
-%% Setup temporary file directory
+% Setup temporary file directory
 fprintf('Downloading the %s Toolbox...',toolboxName);
 tmpFolder = sprintf('%sToolbox',toolboxName);
 pname = fullfile(tempdir,tmpFolder);
@@ -37,7 +40,7 @@ end
 % Create new directory
 [ok,msg] = mkdir(tempdir,tmpFolder);
 
-%% Download and unzip toolbox (GitHub)
+% Download and unzip toolbox (GitHub)
 url = sprintf('https://github.com/USNA-WRCE/%sToolbox/archive/refs/heads/main.zip',toolboxName);
 try
     %fnames = unzip(url,pname);
@@ -55,41 +58,7 @@ catch ME
     fprintf(2,'ERROR MESSAGE:\n\t%s\n',ME.message);
 end
 
-%{
-%% WORK IN PROGRESS! 
-% --> Download without certificate using default webbrowser
-if ~confirm
-%try
-    % Find user downloads folder
-    dlDir = fullfile(getenv('USERPROFILE'), 'Downloads');
-    % Download zip using temp webbrowser
-    web(url);
-    
-    tmpFname = sprintf('%sToolbox-main.zip',toolboxName);
-    t0 = tic;
-    tf = 120;
-    while ~isfile(fullfile(dlDir,tmpFname))
-        t = toc(t0);
-        fprintf('.');
-        if t > tf
-            error('Unable to download/find file.');
-        end
-    end
-    movefile(fullfile(dlDir,tmpFname),pname);
-    fnames = unzip(fullfile(pname,tmpFname),pname);
-    delete(fullfile(pname,tmpFname));
-    
-    fprintf('SUCCESS\n');
-    confirm = true;
-%catch ME
-%    fprintf('FUDGE\n')
-%    confirm = false;
-%    fprintf(2,'ERROR MESSAGE:\n\t%s\n',ME.message);
-%end
-end
-%}
-
-%% Check for successful download
+% Check for successful download
 alternativeInstallMsg = [...
     sprintf('Manually download the %s Toolbox using the following link:\n',toolboxName),...
     newline,...
@@ -109,28 +78,52 @@ if ~confirm
     return
 end
 
-%% Find base directory
+% Find base directory
 install_pos = strfind(fnames, sprintf('install%sToolbox.m',toolboxName) );
 sIdx = cell2mat( install_pos );
 cIdx = ~cell2mat( cellfun(@isempty,install_pos,'UniformOutput',0) );
 
 pname_star = fnames{cIdx}(1:sIdx-1);
 
-%% Get current directory and temporarily change path
+% Get current directory and temporarily change path
 cpath = cd;
 cd(pname_star);
 
-%% Install Toolbox
-installToolbox(true);
+% Check for admin
+skipAdmin = ~checkWriteAccess(matlabroot);
 
-%% Move back to current directory and remove temp file
+% Install Toolbox
+% TODO - consider providing the user with an option or more information
+%        related to "skipAdmin"
+try
+    installToolbox(true,skipAdmin);
+catch ME
+    cd(cpath);
+    throw(ME);
+end
+
+% Move back to current directory and remove temp file
 cd(cpath);
 [ok,msg] = rmdir(pname,'s');
 if ~ok
     warning('Unable to remove temporary download folder. %s',msg);
 end
 
-%% Complete installation
+% Complete installation
 fprintf('Installation complete.\n');
+
+end
+% -------------------------------------------------------------------------
+function tfWrite = checkWriteAccess(pname)
+
+tmpFname = fullfile(pname,'tmp.txt');
+tmpHndle = fopen(tmpFname, 'w');
+if tmpHndle < 0
+    tfWrite = false;
+else
+    tfWrite = true;
+    fclose(tmpHndle);
+    delete(tmpFname);
+end
 
 end
